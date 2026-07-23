@@ -359,6 +359,11 @@ async function loadRulesFromFolder() {
    - 玩家選完特性後，始可進行【第四步驟】，執行隨機開場矩陣，給出第一個冒險行動抉擇。
 
 =========================================
+【特殊晉升事件隨機抽選規範】
+1. 當劇情發展至觸發「特殊晉升事件」時，GM【絕對嚴禁】預設或每次都固定使用「古代魔導核心遺跡」！
+2. GM 必須嚴格遵照《特殊晉升事件表.txt》，在 01 至 15 種事件中執行完全隨機（1D15 隨機數生成）抽選，每次新遊戲與不同對話都必須根據隨機結果提供不同的晉升事件。
+
+=========================================
 【最高優先級：原著劇情禁絕條款】
 1. 本遊戲為原創衍生獨立故事，【絕對嚴禁】出現任何與《我獨自升級》原著小說/漫畫相同的特定劇情！
 2. 嚴禁出現：「雙重地下城巨型至高石像」、「神殿守則（敬拜神/讚美神/證明信仰）」、「石像眼睛發射死亡光束」、「卡勒提農神殿」等原著情節！
@@ -424,7 +429,8 @@ async function callGeminiAPI(userInputText) {
         },
         contents: chatHistory,
         generationConfig: {
-            responseMimeType: "application/json"
+            responseMimeType: "application/json",
+            temperature: 0.85
         }
     };
 
@@ -449,7 +455,7 @@ async function callGeminiAPI(userInputText) {
         const parsedData = JSON.parse(aiResponseText);
         lastGameData = parsedData;
 
-        // 背景自動儲存至目前欄位[cite: 4]
+        // 背景自動儲存至目前欄位
         saveGameToSlot(currentSlot, false);
 
         return parsedData;
@@ -463,7 +469,7 @@ async function callGeminiAPI(userInputText) {
     }
 }
 
-// 📂 多角色存檔管理邏輯[cite: 4]
+// 📂 多角色存檔管理邏輯
 function saveGameToSlot(slotId, showAlert = true) {
     if (chatHistory.length > 0 && lastGameData) {
         const charName = lastGameData.player_status?.name || '未命名獵人';
@@ -662,7 +668,7 @@ function renderGame(data) {
             });
         }
 
-        // 🌟 固定第 4 個按鈕：手動儲存進度按鈕[cite: 4]
+        // 🌟 固定第 4 個按鈕：手動儲存進度按鈕
         const saveBtn = document.createElement('button');
         saveBtn.className = 'btn manual-save-option-btn';
         saveBtn.innerText = `4. 💾 儲存目前進度 (Slot ${currentSlot})`;
