@@ -33,13 +33,13 @@
             background: #2a2a2a;
             border-bottom: 1px solid #444;
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
             flex-wrap: wrap;
         }
         #api-key-input {
             flex: 1;
-            min-width: 200px;
+            min-width: 180px;
             padding: 8px 12px;
             background: #121212;
             border: 1px solid #444;
@@ -111,13 +111,13 @@
             font-size: 14px;
         }
         .btn {
-            padding: 10px 15px;
+            padding: 8px 12px;
             background: #2d3748;
             color: #edf2f7;
             border: 1px solid #4a5568;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             text-align: left;
             transition: all 0.2s;
         }
@@ -127,9 +127,11 @@
             background: #3182ce;
             border-color: #4299e1;
             text-align: center;
-            padding: 10px 20px;
+            padding: 10px 16px;
         }
         .send-btn:hover:not(:disabled) { background: #2b6cb0; }
+        .save-btn { background: #2f855a; border-color: #38a169; text-align: center; }
+        .save-btn:hover:not(:disabled) { background: #276749; }
         .loading { display: none; color: #f1c40f; text-align: center; margin: 10px 0; font-size: 14px; }
 
         /* 🎲 Dice Roll Modal Overlay */
@@ -188,9 +190,10 @@
 
 <div class="game-container">
     <div id="api-setup">
-        <label for="api-key-input">Gemini API Key:</label>
-        <input type="password" id="api-key-input" placeholder="請貼上你的 Gemini API Key">
-        <button class="btn" onclick="startGame()">開始/重置遊戲</button>
+        <label for="api-key-input" style="font-size: 12px;">API Key:</label>
+        <input type="password" id="api-key-input" placeholder="貼上 Gemini API Key">
+        <button class="btn" onclick="startGame()">新遊戲</button>
+        <button class="btn save-btn" onclick="loadGame()">💾 讀取進度</button>
     </div>
 
     <div class="status-bar">
@@ -226,7 +229,7 @@
     </div>
 
     <div class="story-panel" id="story-panel">
-        <div class="story-text">歡迎來到《我獨自升級》衍生版 TRPG。系統正在準備載入遊戲設定...請在上方的輸入框貼上你的 Gemini API Key，然後點擊「開始遊戲」。</div>
+        <div class="story-text">歡迎來到《我獨自升級》衍生版 TRPG。請在上方的輸入框貼上你的 Gemini API Key，然後點擊「新遊戲」開始創角，或點擊「💾 讀取進度」接續上次遊戲。</div>
     </div>
 
     <div class="loading" id="loading">AI 主持人正在閱讀規則與思考中，請稍後...</div>
@@ -254,6 +257,15 @@
 let chatHistory = [];
 let fullSystemInstruction = "";
 let currentCheckInfo = null;
+let lastGameData = null;
+
+// 當網頁開啟時，自動將上次儲存的 API Key 帶入輸入框
+window.onload = function() {
+    const savedApiKey = localStorage.getItem('trpg_gemini_api_key');
+    if (savedApiKey) {
+        document.getElementById('api-key-input').value = savedApiKey;
+    }
+};
 
 async function loadRulesFromFolder() {
     const fileList = [
@@ -351,6 +363,9 @@ async function callGeminiAPI(userInputText) {
         return null;
     }
 
+    // 自動記憶 API Key 到本地
+    localStorage.setItem('trpg_gemini_api_key', apiKey);
+
     document.getElementById('loading').style.display = 'block';
     disableButtons(true);
 
@@ -390,7 +405,13 @@ async function callGeminiAPI(userInputText) {
         
         chatHistory.push({ role: "model", parts: [{ text: aiResponseText }] });
 
-        return JSON.parse(aiResponseText);
+        const parsedData = JSON.parse(aiResponseText);
+        lastGameData = parsedData;
+
+        // 💾 每次對話成功後自動存檔至 localStorage
+        saveGameData();
+
+        return parsedData;
     } catch (error) {
         console.error("執行錯誤：", error);
         alert(`發生錯誤：${error.message}`);
@@ -401,7 +422,56 @@ async function callGeminiAPI(userInputText) {
     }
 }
 
+// 💾 自動儲存存檔資料[cite: 11]
+function saveGameData() {
+    if (chatHistory.length > 0 && lastGameData) {
+        const saveData = {
+            chatHistory: chatHistory,
+            lastGameData: lastGameData,
+            savedTime: new Date().toLocaleString()
+        };
+        localStorage.setItem('trpg_save_slot', JSON.stringify(saveData));
+    }
+}
+
+// 💾 讀取進度[cite: 11]
+function loadGame() {
+    const rawSave = localStorage.getItem('trpg_save_slot');
+    if (!rawSave) {
+        alert("找不到已儲存的遊戲進度！");
+        return;
+    }
+
+    try {
+        const saveData = JSON.parse(rawSave);
+        chatHistory = saveData.chatHistory;
+        lastGameData = saveData.lastGameData;
+
+        document.getElementById('story-panel').innerHTML = '';
+        
+        // 渲染歷史文字
+        chatHistory.forEach(item => {
+            if (item.role === 'model') {
+                try {
+                    const parsedModel = JSON.parse(item.parts[0].text);
+                    appendStoryBlock(parsedModel.story_text);
+                } catch(e) {}
+            }
+        });
+
+        renderGame(lastGameData);
+        alert(`成功讀取進度！(存檔時間：${saveData.savedTime || '歷史紀錄'})`);
+    } catch (e) {
+        alert("讀取存檔失敗，檔案格式可能損壞。");
+    }
+}
+
 async function startGame() {
+    if (chatHistory.length > 0) {
+        if (!confirm("確定要開始新遊戲嗎？未儲存的舊進度將會被覆蓋！")) {
+            return;
+        }
+    }
     chatHistory = [];
     fullSystemInstruction = "";
     document.getElementById('story-panel').innerHTML = '';
@@ -439,6 +509,16 @@ function handleKeyPress(event) {
     }
 }
 
+function appendStoryBlock(text) {
+    if (!text) return;
+    const storyPanel = document.getElementById('story-panel');
+    const newStoryBlock = document.createElement('div');
+    newStoryBlock.className = 'story-text';
+    newStoryBlock.innerText = `\n------------------------------\n${text}`;
+    storyPanel.appendChild(newStoryBlock);
+    storyPanel.scrollTop = storyPanel.scrollHeight;
+}
+
 function renderGame(data) {
     const status = data.player_status;
     document.getElementById('ui-name').innerText = `${status.name || '未命名'} (${status.rank || 'E級'})`;
@@ -465,12 +545,7 @@ function renderGame(data) {
 
     document.getElementById('ui-inventory').innerText = status.inventory && status.inventory.length > 0 ? status.inventory.join(', ') : '空無一物';
 
-    const storyPanel = document.getElementById('story-panel');
-    const newStoryBlock = document.createElement('div');
-    newStoryBlock.className = 'story-text';
-    newStoryBlock.innerText = `\n------------------------------\n${data.story_text}`;
-    storyPanel.appendChild(newStoryBlock);
-    storyPanel.scrollTop = storyPanel.scrollHeight;
+    appendStoryBlock(data.story_text);
 
     if (data.require_dice_check && data.dice_check_info) {
         currentCheckInfo = data.dice_check_info;
