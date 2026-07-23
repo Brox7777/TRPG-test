@@ -14,7 +14,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px;
         }
         .game-container {
             width: 100%;
@@ -27,46 +27,40 @@
             flex-direction: column;
             overflow: hidden;
         }
-        /* API Setting Modal */
         #api-setup {
-            padding: 20px;
+            padding: 15px;
             background: #2a2a2a;
             border-bottom: 1px solid #444;
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
         #api-key-input {
             flex: 1;
+            min-width: 200px;
             padding: 8px 12px;
             background: #121212;
             border: 1px solid #444;
             color: #fff;
             border-radius: 6px;
         }
-        /* Top UI: Status Bar */
         .status-bar {
             background: #252526;
-            padding: 15px 20px;
+            padding: 12px 15px;
             border-bottom: 2px solid #333;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 12px;
+            gap: 10px;
         }
-        .status-item {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .status-label { font-size: 12px; color: #aaa; text-transform: uppercase; }
-        .status-value { font-size: 16px; font-weight: bold; color: #fff; }
-        
-        /* Progress Bars */
+        .status-item { display: flex; flex-direction: column; gap: 4px; }
+        .status-label { font-size: 11px; color: #aaa; text-transform: uppercase; }
+        .status-value { font-size: 15px; font-weight: bold; color: #fff; }
         .progress-container {
             width: 100%;
-            height: 8px;
+            height: 6px;
             background: #444;
-            border-radius: 4px;
+            border-radius: 3px;
             overflow: hidden;
             margin-top: 2px;
         }
@@ -74,68 +68,55 @@
         .hp-bar { background: #e74c3c; }
         .mp-bar { background: #3498db; }
         .exp-bar { background: #f1c40f; }
-
-        /* Story Text Area */
         .story-panel {
-            padding: 20px;
-            height: 350px;
+            padding: 15px;
+            height: 380px;
             overflow-y: auto;
             line-height: 1.6;
-            font-size: 16px;
+            font-size: 15px;
             background: #181818;
             border-bottom: 1px solid #333;
         }
         .story-text { margin-bottom: 15px; white-space: pre-wrap; }
-
-        /* Inventory Panel */
         .inventory-panel {
-            padding: 10px 20px;
+            padding: 10px 15px;
             background: #202020;
             border-bottom: 1px solid #333;
-            font-size: 14px;
+            font-size: 13px;
             color: #bbb;
         }
-
-        /* Choice Buttons Area */
         .choices-panel {
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             background: #1e1e1e;
         }
         .btn {
-            padding: 12px 18px;
+            padding: 10px 15px;
             background: #2d3748;
             color: #edf2f7;
             border: 1px solid #4a5568;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 14px;
             text-align: left;
             transition: all 0.2s;
         }
-        .btn:hover:not(:disabled) {
-            background: #4a5568;
-            border-color: #63b3ed;
-        }
+        .btn:hover:not(:disabled) { background: #4a5568; border-color: #63b3ed; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        /* Loading Overlay */
-        .loading { display: none; color: #f1c40f; text-align: center; margin: 10px 0; }
+        .loading { display: none; color: #f1c40f; text-align: center; margin: 10px 0; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="game-container">
-    <!-- API Key Input Section -->
     <div id="api-setup">
         <label for="api-key-input">Gemini API Key:</label>
         <input type="password" id="api-key-input" placeholder="請貼上你的 Gemini API Key">
         <button class="btn" onclick="startGame()">開始/重置遊戲</button>
     </div>
 
-    <!-- UI Status Bar -->
     <div class="status-bar">
         <div class="status-item">
             <span class="status-label">姓名/階級</span>
@@ -143,7 +124,7 @@
         </div>
         <div class="status-item">
             <span class="status-label">HP (生命值)</span>
-            <span class="status-value" id="ui-hp-text">10 / 10</span>
+            <span class="status-value" id="ui-hp-text">20 / 20</span>
             <div class="progress-container"><div id="ui-hp-bar" class="progress-bar hp-bar"></div></div>
         </div>
         <div class="status-item">
@@ -158,61 +139,85 @@
         </div>
     </div>
 
-    <!-- Inventory Display -->
     <div class="inventory-panel">
         🎒 <strong>背包物品：</strong> <span id="ui-inventory">無</span>
     </div>
 
-    <!-- Main Story Display Area -->
     <div class="story-panel" id="story-panel">
-        <div class="story-text">歡迎來到《我獨自升級》衍生版 TRPG。請在上方的輸入框貼上你的 Gemini API Key，然後點擊「開始遊戲」。</div>
+        <div class="story-text">歡迎來到《我獨自升級》衍生版 TRPG。系統正在準備載入遊戲設定...請在上方的輸入框貼上你的 Gemini API Key，然後點擊「開始遊戲」。</div>
     </div>
 
-    <div class="loading" id="loading">AI 主持人思考中，請稍後...</div>
+    <div class="loading" id="loading">AI 主持人正在閱讀規則與思考中，請稍後...</div>
 
-    <!-- Choice Action Buttons -->
-    <div class="choices-panel" id="choices-panel">
-        <!-- 這裡會由 JS 動態生成選項按鈕 -->
-    </div>
+    <div class="choices-panel" id="choices-panel"></div>
 </div>
 
 <script>
-// 遊戲系統 Prompt 設定 (將你的 TRPG 規則與 JSON 輸出規範整合)
-const SYSTEM_INSTRUCTION = `
-你是一位經驗豐富、敘事生動且邏輯嚴謹的文字 TRPG Game Master (GM)。
-你主持的遊戲參考《我獨自升級》世界觀衍生。
+let chatHistory = [];
+let fullSystemInstruction = "";
 
-【絕對規則】：
-1. 你必須 strict 遵守 JSON 格式輸出，嚴禁輸出任何非 JSON 的 markdown 外殼之外的純文字。
-2. 你每次回應時，必須同時包含最新的玩家 status（HP/MP/經驗/背包等）、劇情故事敘事、以及 3~4 個可選動作選項。
-3. 戰鬥與事件中，請精確扣除 HP 與 MP，並紀錄在 JSON 之中。
+// 自動讀取 rules 資料夾內所有文字檔的函式
+async function loadRulesFromFolder() {
+    // 這裡填入你在 rules 資料夾放的檔名清單
+    const fileList = [
+        'rules/TRPG-我獨自升級(衍生版)總體規則.txt',
+        'rules/世界觀設定與衍生規範.txt',
+        'rules/角色生命值（HP）與恢復機制規範.txt',
+        'rules/角色特性規範.txt',
+        'rules/角色與魔物階級強度暨逐級（Lv.1-120）詳細規範手冊',
+        'rules/角色魔力值（MP）與恢復機制規範.txt',
+        'rules/特殊晉升事件表.txt'
+        'rules/遊戲主持人（GM）行為準則規範.txt'
+        'rules/擲骰檢定與判定機制規範.txt'
+        'rules/獵人公會結構與經營規範.txt'
+        'rules/職業設定與二轉晉升規範.txt'
+    ];
 
-【JSON 輸出格式規範】：
+    let combinedRules = "你是一位經驗豐富、敘事生動且邏輯嚴謹的文字 TRPG Game Master (GM)。你主持的遊戲必須嚴格恪守以下全部字典與規範文件內容：\n\n";
+
+    for (const fileName of fileList) {
+        try {
+            const res = await fetch(fileName);
+            if (res.ok) {
+                const text = await res.text();
+                combinedRules += `\n\n=== [參考規範字典：${fileName}] ===\n` + text;
+            }
+        } catch (e) {
+            console.warn(`無法讀取檔案 ${fileName}，跳過該檔案。`, e);
+        }
+    }
+
+    // 附加絕對格式控制
+    combinedRules += `
+\n=========================================
+【絕對格式與控制規範】
+1. 開局第一回合，必須嚴格執行「第一步驟：引導玩家輸入角色姓名與性別」，禁止一次性跳過步驟。
+2. 初始 E 級獵人的 Max MP 固定為 10 點，Max HP 固定為 20 點，不可隨意修改。
+3. 你的每一次回應，必須 strict 僅輸出 JSON 格式，不得包含任何 Markdown 格式外殼或非 JSON 文字：
 {
   "player_status": {
     "name": "玩家姓名",
     "rank": "E級獵人",
     "level": 1,
-    "hp": 10,
-    "max_hp": 10,
+    "hp": 20,
+    "max_hp": 20,
     "mp": 10,
     "max_mp": 10,
     "exp": 0,
     "max_exp": 100,
-    "inventory": ["基礎匕首", "E級魔晶石x1"]
+    "inventory": ["E級獵人執照", "破舊的匕首"]
   },
-  "story_text": "在這裡填寫生動的劇情描述與環境描繪 (200~300字)...",
+  "story_text": "生動劇情敘事內容...",
   "options": [
-    "選項 1 描述",
-    "選項 2 描述",
-    "選項 3 描述"
+    "選項 1",
+    "選項 2",
+    "選項 3"
   ]
 }
 `;
+    return combinedRules;
+}
 
-let chatHistory = [];
-
-// API 呼叫函式
 async function callGeminiAPI(userInputText) {
     const apiKey = document.getElementById('api-key-input').value.trim();
     if (!apiKey) {
@@ -223,19 +228,22 @@ async function callGeminiAPI(userInputText) {
     document.getElementById('loading').style.display = 'block';
     disableButtons(true);
 
-    // 構建歷史紀錄
+    // 若尚未載入規則，先動態載入規則
+    if (!fullSystemInstruction) {
+        fullSystemInstruction = await loadRulesFromFolder();
+    }
+
     chatHistory.push({ role: "user", parts: [{ text: userInputText }] });
 
-    // 使用官方標準 v1beta 介面與最新的 gemini-2.5-flash 或 gemini-1.5-flash
-    const url =`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
     
     const requestBody = {
         system_instruction: {
-            parts: [{ text: SYSTEM_INSTRUCTION }]
+            parts: [{ text: fullSystemInstruction }]
         },
         contents: chatHistory,
         generationConfig: {
-            responseMimeType: "application/json" // 注意：屬性名稱應為 camelCase (responseMimeType)
+            responseMimeType: "application/json"
         }
     };
 
@@ -248,7 +256,6 @@ async function callGeminiAPI(userInputText) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("API 錯誤細節：", errorData);
             alert(`API 呼叫失敗！\n錯誤代碼：${response.status}\n原因：${errorData.error?.message || '未知錯誤'}`);
             return null;
         }
@@ -256,13 +263,12 @@ async function callGeminiAPI(userInputText) {
         const data = await response.json();
         const aiResponseText = data.candidates[0].content.parts[0].text;
         
-        // 將 AI 回應存回對話歷史
         chatHistory.push({ role: "model", parts: [{ text: aiResponseText }] });
 
         return JSON.parse(aiResponseText);
     } catch (error) {
-        console.error("程式執行錯誤：", error);
-        alert(`發生網路或程式錯誤：${error.message}`);
+        console.error("執行錯誤：", error);
+        alert(`發生錯誤：${error.message}`);
         return null;
     } finally {
         document.getElementById('loading').style.display = 'none';
@@ -270,13 +276,12 @@ async function callGeminiAPI(userInputText) {
     }
 }
 
-// 開始遊戲 / 初始化
 async function startGame() {
-    chatHistory = []; // 清空歷史
+    chatHistory = [];
+    fullSystemInstruction = "";
     document.getElementById('story-panel').innerHTML = '';
     
-    // 開局 Prompt
-    const initPrompt = "遊戲開始。請執行開場初始化：介紹世界觀背景（位於台北的 Gate 異變），引導我建立角色，並給我第一回合的行動抉擇。";
+    const initPrompt = "遊戲開始。請嚴格執行開場初始化【第一步驟】：引導我建立角色（輸入角色姓名與性別）。";
     const gameData = await callGeminiAPI(initPrompt);
 
     if (gameData) {
@@ -284,7 +289,6 @@ async function startGame() {
     }
 }
 
-// 選擇選項並推進劇情
 async function makeChoice(optionText) {
     const gameData = await callGeminiAPI(`我選擇了：${optionText}`);
     if (gameData) {
@@ -292,41 +296,33 @@ async function makeChoice(optionText) {
     }
 }
 
-// 渲染畫面 UI 與劇情
 function renderGame(data) {
-    // 1. 更新 UI 狀態欄 (Status Bar)
     const status = data.player_status;
     document.getElementById('ui-name').innerText = `${status.name || '未命名'} (${status.rank || 'E級'})`;
     
-    // HP
     document.getElementById('ui-hp-text').innerText = `${status.hp} / ${status.max_hp}`;
     const hpPct = Math.max(0, Math.min(100, (status.hp / status.max_hp) * 100));
     document.getElementById('ui-hp-bar').style.width = `${hpPct}%`;
 
-    // MP
     document.getElementById('ui-mp-text').innerText = `${status.mp} / ${status.max_mp}`;
     const mpPct = Math.max(0, Math.min(100, (status.mp / status.max_mp) * 100));
     document.getElementById('ui-mp-bar').style.width = `${mpPct}%`;
 
-    // Level & Exp
     document.getElementById('ui-level-text').innerText = `Lv.${status.level} (${status.exp}/${status.max_exp})`;
     const expPct = Math.max(0, Math.min(100, (status.exp / status.max_exp) * 100));
     document.getElementById('ui-exp-bar').style.width = `${expPct}%`;
 
-    // 背包
     document.getElementById('ui-inventory').innerText = status.inventory && status.inventory.length > 0 ? status.inventory.join(', ') : '空無一物';
 
-    // 2. 更新劇情文字 (Story Panel)
     const storyPanel = document.getElementById('story-panel');
     const newStoryBlock = document.createElement('div');
     newStoryBlock.className = 'story-text';
     newStoryBlock.innerText = `\n------------------------------\n${data.story_text}`;
     storyPanel.appendChild(newStoryBlock);
-    storyPanel.scrollTop = storyPanel.scrollHeight; // 自動捲動到底部
+    storyPanel.scrollTop = storyPanel.scrollHeight;
 
-    // 3. 動態渲染按鈕 (Choice Buttons)
     const choicesPanel = document.getElementById('choices-panel');
-    choicesPanel.innerHTML = ''; // 清空舊按鈕
+    choicesPanel.innerHTML = '';
 
     if (data.options && data.options.length > 0) {
         data.options.forEach((optText, index) => {
@@ -339,7 +335,6 @@ function renderGame(data) {
     }
 }
 
-// 開關按鈕狀態（防止重複點擊）
 function disableButtons(disabled) {
     const buttons = document.querySelectorAll('#choices-panel .btn');
     buttons.forEach(btn => btn.disabled = disabled);
