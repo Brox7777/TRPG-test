@@ -74,7 +74,7 @@
 
         .story-panel {
             padding: 15px;
-            height: 380px;
+            height: 420px;
             overflow-y: auto;
             line-height: 1.6;
             font-size: 15px;
@@ -111,15 +111,16 @@
             font-size: 14px;
         }
         .btn {
-            padding: 8px 12px;
+            padding: 10px 14px;
             background: #2d3748;
             color: #edf2f7;
             border: 1px solid #4a5568;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 13.5px;
             text-align: left;
             transition: all 0.2s;
+            line-height: 1.4;
         }
         .btn:hover:not(:disabled) { background: #4a5568; border-color: #63b3ed; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -143,8 +144,8 @@
         }
         .loading { display: none; color: #f1c40f; text-align: center; margin: 10px 0; font-size: 14px; }
 
-        /* 🎲 Dice Roll & Save Manager Modal Overlay */
-        .dice-overlay, .modal-overlay {
+        /* 📂 Save Manager Modal Overlay */
+        .modal-overlay {
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -180,43 +181,6 @@
         .slot-info { font-size: 12px; color: #ccc; }
         .slot-name { font-size: 14px; font-weight: bold; color: #fff; }
         .slot-btns { display: flex; gap: 5px; }
-        .dice-box {
-            background: #2a2a2a;
-            border: 2px solid #f1c40f;
-            border-radius: 12px;
-            padding: 25px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 0 20px rgba(241, 196, 15, 0.3);
-        }
-        .dice-title { font-size: 18px; color: #f1c40f; margin-bottom: 10px; font-weight: bold; }
-        .dice-desc { font-size: 14px; color: #ddd; margin-bottom: 20px; line-height: 1.4; }
-        .dice-display {
-            font-size: 48px;
-            font-weight: bold;
-            color: #fff;
-            margin: 15px 0;
-            height: 60px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #121212;
-            border-radius: 8px;
-            border: 1px solid #555;
-        }
-        .dice-btn {
-            background: #e74c3c;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            transition: background 0.2s;
-        }
-        .dice-btn:hover { background: #c0392b; }
     </style>
 </head>
 <body>
@@ -268,7 +232,7 @@
     <div class="loading" id="loading">AI 主持人正在閱讀規則與思考中，請稍後...</div>
 
     <div class="choices-panel" id="choices-panel">
-        <div class="custom-input-box" id="custom-input-box">
+        <div class="custom-input-box" id="custom-text-input-box">
             <input type="text" id="custom-text-input" placeholder="在這裡輸入文字 (例如: 姓名/性別 或 自由行動)..." onkeypress="handleKeyPress(event)">
             <button class="btn send-btn" id="send-input-btn" onclick="sendCustomInput()">送出</button>
         </div>
@@ -283,22 +247,11 @@
             <button class="btn send-btn" style="width: 100%;" onclick="closeSaveManager()">關閉面板</button>
         </div>
     </div>
-
-    <!-- 🎲 Dice Roll Modal Overlay -->
-    <div class="dice-overlay" id="dice-overlay">
-        <div class="dice-box">
-            <div class="dice-title" id="dice-title">🎲 需要進行 D20 行動檢定</div>
-            <div class="dice-desc" id="dice-desc">請投擲 D20 決定行動成敗</div>
-            <div class="dice-display" id="dice-display">🎲</div>
-            <button class="dice-btn" id="dice-btn" onclick="rollDice()">投擲 20 面骰 (D20)</button>
-        </div>
-    </div>
 </div>
 
 <script>
 let chatHistory = [];
 let fullSystemInstruction = "";
-let currentCheckInfo = null;
 let lastGameData = null;
 let currentSlot = 1; // 預設使用欄位 1
 let currentGameEvolutionEvent = ""; // 儲存本局 JS 隨機抽到的特殊晉升事件
@@ -310,14 +263,14 @@ window.onload = function() {
     }
 };
 
-// 🎲 由前端 JavaScript 完全掌控 1D15 隨機抽樣，避免 LLM 偏好第 1 項
+// 🎲 由前端 JavaScript 完全掌控 1D15 隨機抽樣，確保每次新遊戲事件都不重複
 function getRandomEvolutionEvent() {
     const events = [
         "01. 【古代魔導核心遺跡 (Ancient Aether Nexus)】",
         "02. 【虛空裂縫重疊事件 (Void Rift Convergence)】",
         "03. 【神聖律令之契約 (Covenant of the Divine Mandate)】",
         "04. 【君王殘魂之寄生 (Host of the Fallen Monarch)】",
-        "05. 【界外天體之詛咒與賜福 (Cosmic Starlight Parasite)】",
+        "05. 【界外天體之詛詛與賜福 (Cosmic Starlight Parasite)】",
         "06. 【時空迴廊之囚徒 (Prisoner of the Temporal Loop)】",
         "07. 【失落神明之棋盤 (The Divine Chessboard)】",
         "08. 【概念吞噬者的器官移植 (Devourer's Graft)】",
@@ -366,43 +319,28 @@ async function loadRulesFromFolder() {
 
     combinedRules += `
 \n=========================================
-【最高指令：特殊晉升事件（動態成長解鎖）執行嚴格規範】
-1. 【指定晉升事件】：本局遊戲若觸發特殊晉升事件，GM **必須且只能** 使用系統指定之事件：【 ${currentGameEvolutionEvent} 】！【絕對嚴禁】自行變更為其他事件！
-2. 【禁止一回合秒通關】：當玩家觸發此「特殊晉升事件」時，【絕對嚴禁】在單一回應中直接宣佈試煉通過或直接解鎖成長！
-3. 【史詩級多回合試煉流程】：
-   - 階段一（遭遇與困境）：詳細描繪異變發生、絕境環境降臨，提供玩家行動抉擇。
-   - 階段二（生死檢定）：必須要求玩家進行 D20 行動/生存/意志檢定（"require_dice_check": true）。
-   - 階段三（極限對抗）：根據檢定結果，描繪驚心動魄的絕境掙扎（必須經歷至少 3~5 個回合的互動對抗）。
-   - 階段四（覺醒認可）：唯有在玩家通過連續的極限考驗後，方可於故事結尾宣佈成功解鎖「動態成長」！
-4. 【敘事字數與沉浸感】：每一次回應的 story_text 必須保持 250~400 字之龐大、詳盡且細節豐富的小說級描繪，營造絕望感與高維壓迫感！
+【最高指令：自動背景檢定與沉浸式小說敘事規範】
+1. 【取消玩家手動擲骰彈窗】：所有戰鬥攻擊、技能發動、生存檢定與能力測試，【全部由 GM 在背景自動進行機率與 D20 判定】！嚴禁要求玩家彈出視窗擲骰！
+2. 【背景檢定呈現方式】：GM 必須直接在故事敘事內文中，以顯眼標示寫出檢定過程與結果（例如：『【行動檢定】：D20 骰出 14 + 敏捷修正 2 = 16 (DC 14，檢定成功！)...』），接著緊連著描繪生動的行動後果與劇情推進。
+3. 【指定晉升事件】：本局遊戲若觸發特殊晉升事件，GM **必須且只能** 使用系統指定之事件：【 ${currentGameEvolutionEvent} 】！【絕對嚴禁】自行變更為其他事件！
+4. 【禁止一回合秒通關】：當玩家觸發「特殊晉升事件」時，【絕對嚴禁】在單一回應中直接宣佈試煉通過或直接解鎖成長！必須將試煉拆解為「絕境降臨 $\rightarrow$ 生死考驗對抗 $\rightarrow$ 關鍵行動抉擇 $\rightarrow$ 獲得認可」至少 3~5 個對話回合！
+5. 【敘事字數與沉浸感】：每一次回應的 story_text 必須保持 250~400 字之龐大、詳盡且細節豐富的小說級描繪！
 
 =========================================
 【嚴格創角四步驟與獨立階段鎖定規範】
-1. 【第一步驟：角色建立】：
-   - 僅引導玩家輸入「角色姓名」與「角色性別」。
-   - 狀態控制：【等待狀態】。在此步驟完成前，【嚴禁】發送職業或特性列表，也不得提供職業按鈕！
-
-2. 【第二步驟：選擇覺醒職業】（玩家輸入姓名性別後觸發）：
-   - 完整列出全部 8 種一階基礎職業（坦克、戰士、刺客、射手、攻擊魔法、召喚魔法、治療、輔助）之名稱、數值傾向與 3 項基礎技能。
-   - 【絕對禁令】：在此步驟【嚴禁】提供或提及任何角色特性！options 選項陣列【只能】是單純的職業名稱。
-
-3. 【第三步驟：選擇角色特性】（玩家確定職業後觸發）：
-   - 在此步驟，GM 才可完整列出《角色特性規範手冊》中的全部 16 種正面特性名稱與效果。
-   - options 選項陣列【只能】是單純的特性名稱。【絕對嚴禁】將職業與特性合併在同一個選項中！
-
-4. 【第四步驟：角色建立完成與隨機開場】：
-   - 玩家選完特性後，始可進行【第四步驟】，執行隨機開場矩陣，給出第一個冒險行動抉擇。
+1. 【第一步驟：角色建立】：僅引導玩家輸入「角色姓名」與「角色性別」。在此步驟完成前，【嚴禁】發送職業或特性列表！
+2. 【第二步驟：選擇覺醒職業】：完整列出 8 種一階基礎職業之名稱、數值傾向與 3 項基礎技能。options 選項陣列【只能】是單純的職業名稱。
+3. 【第三步驟：選擇角色特性】：完整列出 16 種正面特性名稱與效果。options 選項陣列【只能】是單純的特性名稱。
+4. 【第四步驟：角色建立完成與隨機開場】：執行隨機開場矩陣，給出第一個冒險行動抉擇。
 
 =========================================
 【最高優先級：原著劇情禁絕條款】
 1. 本遊戲為原創衍生獨立故事，【絕對嚴禁】出現任何與《我獨自升級》原著小說/漫畫相同的特定劇情！
-2. 嚴禁出現：「雙重地下城巨型至高石像」、「神殿守則（敬拜神/讚美神/證明信仰）」、「石像眼睛發射死亡光束」、「卡勒提農神殿」等原著情節！
 
 =========================================
 【動態成長鎖定與 JSON 輸出規範】
 1. 初始 E 級獵人 Max MP 固定為 10 點，Max HP 固定為 20 點。未通關原創特殊晉升事件前，unlocked_growth 必須為 false。
-2. 【擲骰規則】：遇到任何戰鬥攻擊、技能發動或風險檢定，【嚴禁自己代骰】，必須在 JSON 的 "require_dice_check" 填入 true，暫停等待玩家擲骰結果！
-3. 你的每一次回應，必須 strict 僅輸出 JSON 格式：
+2. 你的每一次回應，必須 strict 僅輸出 JSON 格式：
 {
   "player_status": {
     "name": "玩家姓名",
@@ -417,16 +355,11 @@ async function loadRulesFromFolder() {
     "max_exp": 100,
     "inventory": ["E級獵人執照", "破舊的匕首"]
   },
-  "story_text": "生動且具備高度沉浸感的劇情敘事內容 (250~400字)...",
-  "require_dice_check": false, 
-  "dice_check_info": {
-     "check_type": "行動/技能檢定名稱 (如: 力量攻擊 / 敏捷閃避)",
-     "dc_desc": "難度描述與所需 DC (如: 門檻 DC 12)"
-  },
+  "story_text": "包含背景檢定結果 (如: 【行動檢定】D20=15...) 與生動小說敘事內容 (250~400字)...",
   "options": [
-    "選項 1",
-    "選項 2",
-    "選項 3"
+    "符合當前最新劇情的選項 1",
+    "符合當前最新劇情的選項 2",
+    "符合當前最新劇情的選項 3"
   ]
 }
 `;
@@ -612,7 +545,7 @@ async function startGame() {
     fullSystemInstruction = "";
     document.getElementById('story-panel').innerHTML = '';
     
-    // 🌟 核心：新遊戲開局時，前端直接抽選本局事件
+    // 新遊戲開局時，前端直接抽取本局事件
     currentGameEvolutionEvent = getRandomEvolutionEvent();
     console.log("本局遊戲預定晉升事件：", currentGameEvolutionEvent);
 
@@ -687,64 +620,26 @@ function renderGame(data) {
 
     appendStoryBlock(data.story_text);
 
-    if (data.require_dice_check && data.dice_check_info) {
-        currentCheckInfo = data.dice_check_info;
-        showDiceOverlay(currentCheckInfo);
-    } else {
-        const choicesPanel = document.getElementById('button-options-container');
-        choicesPanel.innerHTML = '';
+    // 強制每一次回傳都刷新下方的選項，徹底解決選項停在舊回合的問題
+    const choicesPanel = document.getElementById('button-options-container');
+    choicesPanel.innerHTML = '';
 
-        if (data.options && data.options.length > 0) {
-            data.options.forEach((optText, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'btn';
-                btn.innerText = `${index + 1}. ${optText}`;
-                btn.onclick = () => makeChoice(optText);
-                choicesPanel.appendChild(btn);
-            });
-        }
-
-        // 固定儲存按鈕
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'btn manual-save-option-btn';
-        saveBtn.innerText = `4. 💾 儲存目前進度 (Slot ${currentSlot})`;
-        saveBtn.onclick = () => saveGameToSlot(currentSlot, true);
-        choicesPanel.appendChild(saveBtn);
+    if (data.options && data.options.length > 0) {
+        data.options.forEach((optText, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.innerText = `${index + 1}. ${optText}`;
+            btn.onclick = () => makeChoice(optText);
+            choicesPanel.appendChild(btn);
+        });
     }
-}
 
-function showDiceOverlay(checkInfo) {
-    document.getElementById('dice-title').innerText = `🎲 觸發檢定：${checkInfo.check_type || '行動檢定'}`;
-    document.getElementById('dice-desc').innerText = checkInfo.dc_desc || '請投擲 D20 決定行動成敗';
-    document.getElementById('dice-display').innerText = '🎲';
-    document.getElementById('dice-btn').disabled = false;
-    document.getElementById('dice-overlay').style.display = 'flex';
-}
-
-function rollDice() {
-    const diceBtn = document.getElementById('dice-btn');
-    diceBtn.disabled = true;
-    const display = document.getElementById('dice-display');
-
-    let counter = 0;
-    const interval = setInterval(() => {
-        display.innerText = Math.floor(Math.random() * 20) + 1;
-        counter++;
-        if (counter > 15) {
-            clearInterval(interval);
-            const finalRoll = Math.floor(Math.random() * 20) + 1;
-            display.innerText = finalRoll;
-
-            setTimeout(async () => {
-                document.getElementById('dice-overlay').style.display = 'none';
-                const resultText = `[玩家進行了 ${currentCheckInfo.check_type || '檢定'}]：原始 D20 骰出 ${finalRoll} 點！請根據規則與我的角色特性算式結算此行動結果。`;
-                const gameData = await callGeminiAPI(resultText);
-                if (gameData) {
-                    renderGame(gameData);
-                }
-            }, 1200);
-        }
-    }, 60);
+    // 固定儲存按鈕
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn manual-save-option-btn';
+    saveBtn.innerText = `4. 💾 儲存目前進度 (Slot ${currentSlot})`;
+    saveBtn.onclick = () => saveGameToSlot(currentSlot, true);
+    choicesPanel.appendChild(saveBtn);
 }
 
 function disableButtons(disabled) {
