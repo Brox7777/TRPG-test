@@ -70,10 +70,7 @@
         .mp-bar { background: #3498db; }
         .exp-bar { background: #f1c40f; }
 
-        /* 預設隱藏經驗值面板 */
-        #exp-status-item {
-            display: none;
-        }
+        #exp-status-item { display: none; }
 
         .story-panel {
             padding: 15px;
@@ -212,13 +209,11 @@
             <div class="progress-container"><div id="ui-mp-bar" class="progress-bar mp-bar"></div></div>
         </div>
         
-        <!-- 狀態鎖定標籤（未解鎖時顯示） -->
         <div class="status-item" id="locked-status-item">
             <span class="status-label">成長系統</span>
             <span class="status-value" style="color: #888;">🔒 成長鎖定</span>
         </div>
 
-        <!-- 等級/經驗值欄位（預設隱藏，解鎖後顯示） -->
         <div class="status-item" id="exp-status-item">
             <span class="status-label">等級 / 經驗值</span>
             <span class="status-value" id="ui-level-text">Lv.1 (0/100)</span>
@@ -237,7 +232,6 @@
     <div class="loading" id="loading">AI 主持人正在閱讀規則與思考中，請稍後...</div>
 
     <div class="choices-panel" id="choices-panel">
-        <!-- 自訂打字輸入框區塊 -->
         <div class="custom-input-box" id="custom-input-box">
             <input type="text" id="custom-text-input" placeholder="在這裡輸入文字 (例如: 姓名/性別 或 自由行動)..." onkeypress="handleKeyPress(event)">
             <button class="btn send-btn" id="send-input-btn" onclick="sendCustomInput()">送出</button>
@@ -294,20 +288,32 @@ async function loadRulesFromFolder() {
 
     combinedRules += `
 \n=========================================
-【最高優先級：原著劇情禁絕與創新規範】
-1. 【嚴禁原著抄襲/復刻條款】：
-   - 本遊戲為原著世界觀之「原創衍生獨立故事」，【絕對嚴禁】出現任何與《我獨自升級》原著小說/漫畫相同的特定劇情事件！
-   - 嚴禁出現：「雙重地下城中的巨型至高石像」、「神殿守則（敬拜神/讚美神/證明信仰）」、「石像眼睛發射雷射」、「卡勒提農神殿」等原著情節！
-   - 所有遇到的「特殊晉升事件」，必須完全原創（例如：虛空裂縫重疊、古代魔導核心、死靈深淵等），並以原創的敵方單位、場景與機關進行描述！
+【嚴格創角四步驟與獨立階段鎖定規範】
+1. 【第一步驟：角色建立】：
+   - 僅引導玩家輸入「角色姓名」與「角色性別」。
+   - 狀態控制：【等待狀態】。在此步驟完成前，【嚴禁】發送職業或特性列表，也不得提供職業按鈕！
 
-2. 【開場與創角流程】：
-   - 開局第一回合，必須嚴格執行「第一步驟：引導玩家輸入角色姓名與性別」，等待玩家打字輸入。
-3. 【動態成長鎖定】：
-   - 初始 E 級獵人 Max MP 固定為 10 點，Max HP 固定為 20 點。未通關原創特殊晉升事件前，unlocked_growth 必須為 false。
-4. 【玩家親自擲骰】：
-   - 遇到任何戰鬥、技能或風險檢定，【嚴禁自己代骰】，必須在 JSON 的 "require_dice_check" 填入 true，等待玩家擲骰。
-5. 【JSON 格式規範】：
-   - 你的每一次回應，必須 strict 僅輸出 JSON 格式：
+2. 【第二步驟：選擇覺醒職業】（玩家輸入姓名性別後觸發）：
+   - 完整列出全部 8 種一階基礎職業（坦克、戰士、刺客、射手、攻擊魔法、召喚魔法、治療、輔助）之名稱、數值傾向與 3 項基礎技能。
+   - 【絕對禁令】：在此步驟【嚴禁】提供或提及任何角色特性！options 選項陣列【只能】是單純的職業名稱（如：["1. 坦克", "2. 戰士", "3. 刺客", "4. 射手", "5. 攻擊魔法", "6. 召喚魔法", "7. 治療", "8. 輔助"]）。
+
+3. 【第三步驟：選擇角色特性】（玩家確定職業後觸發）：
+   - 在此步驟，GM 才可完整列出《角色特性規範手冊》中的全部 16 種正面特性名稱與效果。
+   - options 選項陣列【只能】是單純的特性名稱（如：["1. 洞燭先機", "2. 金剛不壞體", "3. 鋼鐵意志"...等]）。【絕對嚴禁】將職業與特性合併在同一個選項中！
+
+4. 【第四步驟：角色建立完成與隨機開場】：
+   - 玩家選完特性後，始可進行【第四步驟】，執行隨機開場矩陣，給出第一個冒險行動抉擇。
+
+=========================================
+【最高優先級：原著劇情禁絕條款】
+1. 本遊戲為原創衍生獨立故事，【絕對嚴禁】出現任何與《我獨自升級》原著小說/漫畫相同的特定劇情！
+2. 嚴禁出現：「雙重地下城巨型至高石像」、「神殿守則（敬拜神/讚美神/證明信仰）」、「石像眼睛發射死亡光束」、「卡勒提農神殿」等原著情節！
+
+=========================================
+【動態成長鎖定與 JSON 輸出規範】
+1. 初始 E 級獵人 Max MP 固定為 10 點，Max HP 固定為 20 點。未通關原創特殊晉升事件前，unlocked_growth 必須為 false。
+2. 【擲骰規則】：遇到任何戰鬥攻擊、技能發動或風險檢定，【嚴禁自己代骰】，必須在 JSON 的 "require_dice_check" 填入 true，暫停等待玩家擲骰結果！
+3. 你的每一次回應，必須 strict 僅輸出 JSON 格式：
 {
   "player_status": {
     "name": "玩家姓名",
@@ -400,7 +406,7 @@ async function startGame() {
     fullSystemInstruction = "";
     document.getElementById('story-panel').innerHTML = '';
     
-    const initPrompt = "遊戲開始。請嚴格執行開場初始化【第一步驟】：引導我建立角色（輸入角色姓名與性別）。";
+    const initPrompt = "遊戲開始。請嚴格執行開場初始化【第一步驟】：引導我建立角色（輸入角色姓名與性別）。在此步驟嚴禁列出職業或特性！";
     const gameData = await callGeminiAPI(initPrompt);
 
     if (gameData) {
@@ -415,20 +421,18 @@ async function makeChoice(optionText) {
     }
 }
 
-// 處理自由輸入文字送出
 async function sendCustomInput() {
     const inputEl = document.getElementById('custom-text-input');
     const text = inputEl.value.trim();
     if (!text) return;
 
-    inputEl.value = ''; // 清空輸入框
+    inputEl.value = '';
     const gameData = await callGeminiAPI(text);
     if (gameData) {
         renderGame(gameData);
     }
 }
 
-// 鍵盤按下 Enter 鍵直接送出
 function handleKeyPress(event) {
     if (event.key === 'Enter') {
         sendCustomInput();
