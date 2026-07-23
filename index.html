@@ -96,8 +96,22 @@
             padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             background: #1e1e1e;
+        }
+        .custom-input-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        #custom-text-input {
+            flex: 1;
+            padding: 10px 12px;
+            background: #121212;
+            border: 1px solid #4a5568;
+            color: #fff;
+            border-radius: 6px;
+            font-size: 14px;
         }
         .btn {
             padding: 10px 15px;
@@ -112,6 +126,13 @@
         }
         .btn:hover:not(:disabled) { background: #4a5568; border-color: #63b3ed; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .send-btn {
+            background: #3182ce;
+            border-color: #4299e1;
+            text-align: center;
+            padding: 10px 20px;
+        }
+        .send-btn:hover:not(:disabled) { background: #2b6cb0; }
         .loading { display: none; color: #f1c40f; text-align: center; margin: 10px 0; font-size: 14px; }
 
         /* 🎲 Dice Roll Modal Overlay */
@@ -215,7 +236,14 @@
 
     <div class="loading" id="loading">AI 主持人正在閱讀規則與思考中，請稍後...</div>
 
-    <div class="choices-panel" id="choices-panel"></div>
+    <div class="choices-panel" id="choices-panel">
+        <!-- 自訂打字輸入框區塊 -->
+        <div class="custom-input-box" id="custom-input-box">
+            <input type="text" id="custom-text-input" placeholder="在這裡輸入文字 (例如: 姓名/性別 或 自由行動)..." onkeypress="handleKeyPress(event)">
+            <button class="btn send-btn" id="send-input-btn" onclick="sendCustomInput()">送出</button>
+        </div>
+        <div id="button-options-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+    </div>
 
     <!-- 🎲 Dice Roll Modal Overlay -->
     <div class="dice-overlay" id="dice-overlay">
@@ -266,12 +294,20 @@ async function loadRulesFromFolder() {
 
     combinedRules += `
 \n=========================================
-【動態成長鎖定與 JSON 輸出規範】
-1. 開局第一回合，必須嚴格執行「第一步驟：引導玩家輸入角色姓名與性別」，禁止一次性跳過步驟。
-2. 初始 E 級獵人的 Max MP 固定為 10 點，Max HP 固定為 20 點，不可隨意修改。
-3. 【動態成長鎖定規則】：玩家初始為普通覺醒者，無法獲得經驗值或提升等級（"unlocked_growth" 必須為 false）。只有當玩家在劇情中成功通關「雙重地下城 / 特殊晉升事件」後，方可將 "unlocked_growth" 改為 true，並開始解鎖等級與經驗值系統！
-4. 【擲骰規則】：遇到任何戰鬥攻擊、技能發動或風險檢定，你【嚴禁自己替玩家代骰】！必須在 JSON 的 "require_dice_check" 填入 true，暫停等待玩家擲骰結果！
-5. 你的每一次回應，必須 strict 僅輸出 JSON 格式，不得包含任何 Markdown 格式外殼或非 JSON 文字：
+【最高優先級：原著劇情禁絕與創新規範】
+1. 【嚴禁原著抄襲/復刻條款】：
+   - 本遊戲為原著世界觀之「原創衍生獨立故事」，【絕對嚴禁】出現任何與《我獨自升級》原著小說/漫畫相同的特定劇情事件！
+   - 嚴禁出現：「雙重地下城中的巨型至高石像」、「神殿守則（敬拜神/讚美神/證明信仰）」、「石像眼睛發射雷射」、「卡勒提農神殿」等原著情節！
+   - 所有遇到的「特殊晉升事件」，必須完全原創（例如：虛空裂縫重疊、古代魔導核心、死靈深淵等），並以原創的敵方單位、場景與機關進行描述！
+
+2. 【開場與創角流程】：
+   - 開局第一回合，必須嚴格執行「第一步驟：引導玩家輸入角色姓名與性別」，等待玩家打字輸入。
+3. 【動態成長鎖定】：
+   - 初始 E 級獵人 Max MP 固定為 10 點，Max HP 固定為 20 點。未通關原創特殊晉升事件前，unlocked_growth 必須為 false。
+4. 【玩家親自擲骰】：
+   - 遇到任何戰鬥、技能或風險檢定，【嚴禁自己代骰】，必須在 JSON 的 "require_dice_check" 填入 true，等待玩家擲骰。
+5. 【JSON 格式規範】：
+   - 你的每一次回應，必須 strict 僅輸出 JSON 格式：
 {
   "player_status": {
     "name": "玩家姓名",
@@ -318,7 +354,6 @@ async function callGeminiAPI(userInputText) {
 
     chatHistory.push({ role: "user", parts: [{ text: userInputText }] });
 
-    // 修正為官方標準 Flash 模型 API URL
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     
     const requestBody = {
@@ -380,6 +415,26 @@ async function makeChoice(optionText) {
     }
 }
 
+// 處理自由輸入文字送出
+async function sendCustomInput() {
+    const inputEl = document.getElementById('custom-text-input');
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    inputEl.value = ''; // 清空輸入框
+    const gameData = await callGeminiAPI(text);
+    if (gameData) {
+        renderGame(gameData);
+    }
+}
+
+// 鍵盤按下 Enter 鍵直接送出
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendCustomInput();
+    }
+}
+
 function renderGame(data) {
     const status = data.player_status;
     document.getElementById('ui-name').innerText = `${status.name || '未命名'} (${status.rank || 'E級'})`;
@@ -392,7 +447,6 @@ function renderGame(data) {
     const mpPct = Math.max(0, Math.min(100, (status.mp / status.max_mp) * 100));
     document.getElementById('ui-mp-bar').style.width = `${mpPct}%`;
 
-    // 判斷是否已解鎖動態成長（經驗值系統）
     if (status.unlocked_growth) {
         document.getElementById('locked-status-item').style.display = 'none';
         document.getElementById('exp-status-item').style.display = 'flex';
@@ -418,7 +472,7 @@ function renderGame(data) {
         currentCheckInfo = data.dice_check_info;
         showDiceOverlay(currentCheckInfo);
     } else {
-        const choicesPanel = document.getElementById('choices-panel');
+        const choicesPanel = document.getElementById('button-options-container');
         choicesPanel.innerHTML = '';
 
         if (data.options && data.options.length > 0) {
@@ -468,8 +522,10 @@ function rollDice() {
 }
 
 function disableButtons(disabled) {
-    const buttons = document.querySelectorAll('#choices-panel .btn');
+    const buttons = document.querySelectorAll('#choices-panel .btn, #send-input-btn');
+    const customInput = document.getElementById('custom-text-input');
     buttons.forEach(btn => btn.disabled = disabled);
+    if (customInput) customInput.disabled = disabled;
 }
 </script>
 
