@@ -26,6 +26,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
         #api-setup {
             padding: 15px;
@@ -68,6 +69,12 @@
         .hp-bar { background: #e74c3c; }
         .mp-bar { background: #3498db; }
         .exp-bar { background: #f1c40f; }
+
+        /* 預設隱藏經驗值面板 */
+        #exp-status-item {
+            display: none;
+        }
+
         .story-panel {
             padding: 15px;
             height: 380px;
@@ -106,6 +113,57 @@
         .btn:hover:not(:disabled) { background: #4a5568; border-color: #63b3ed; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .loading { display: none; color: #f1c40f; text-align: center; margin: 10px 0; font-size: 14px; }
+
+        /* 🎲 Dice Roll Modal Overlay */
+        .dice-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+        .dice-box {
+            background: #2a2a2a;
+            border: 2px solid #f1c40f;
+            border-radius: 12px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.3);
+        }
+        .dice-title { font-size: 18px; color: #f1c40f; margin-bottom: 10px; font-weight: bold; }
+        .dice-desc { font-size: 14px; color: #ddd; margin-bottom: 20px; line-height: 1.4; }
+        .dice-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            margin: 15px 0;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #121212;
+            border-radius: 8px;
+            border: 1px solid #555;
+        }
+        .dice-btn {
+            background: #e74c3c;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        .dice-btn:hover { background: #c0392b; }
     </style>
 </head>
 <body>
@@ -132,7 +190,15 @@
             <span class="status-value" id="ui-mp-text">10 / 10</span>
             <div class="progress-container"><div id="ui-mp-bar" class="progress-bar mp-bar"></div></div>
         </div>
-        <div class="status-item">
+        
+        <!-- 狀態鎖定標籤（未解鎖時顯示） -->
+        <div class="status-item" id="locked-status-item">
+            <span class="status-label">成長系統</span>
+            <span class="status-value" style="color: #888;">🔒 成長鎖定</span>
+        </div>
+
+        <!-- 等級/經驗值欄位（預設隱藏，解鎖後顯示） -->
+        <div class="status-item" id="exp-status-item">
             <span class="status-label">等級 / 經驗值</span>
             <span class="status-value" id="ui-level-text">Lv.1 (0/100)</span>
             <div class="progress-container"><div id="ui-exp-bar" class="progress-bar exp-bar"></div></div>
@@ -150,26 +216,35 @@
     <div class="loading" id="loading">AI 主持人正在閱讀規則與思考中，請稍後...</div>
 
     <div class="choices-panel" id="choices-panel"></div>
+
+    <!-- 🎲 Dice Roll Modal Overlay -->
+    <div class="dice-overlay" id="dice-overlay">
+        <div class="dice-box">
+            <div class="dice-title" id="dice-title">🎲 需要進行 D20 行動檢定</div>
+            <div class="dice-desc" id="dice-desc">請投擲 D20 決定行動成敗</div>
+            <div class="dice-display" id="dice-display">🎲</div>
+            <button class="dice-btn" id="dice-btn" onclick="rollDice()">投擲 20 面骰 (D20)</button>
+        </div>
+    </div>
 </div>
 
 <script>
 let chatHistory = [];
 let fullSystemInstruction = "";
+let currentCheckInfo = null;
 
-// 自動讀取 rule 資料夾內所有文字檔的函式
 async function loadRulesFromFolder() {
-    // 這裡填入你在 rules 資料夾放的檔名清單
     const fileList = [
         'rule/TRPG-我獨自升級(衍生版)總體規則.txt',
         'rule/世界觀設定與衍生規範.txt',
         'rule/角色生命值（HP）與恢復機制規範.txt',
         'rule/角色特性規範.txt',
-        'rule/角色與魔物階級強度暨逐級（Lv.1-120）詳細規範手冊',
+        'rule/角色與魔物階級強度暨逐級（Lv.1-120）詳細規範手冊.txt',
         'rule/角色魔力值（MP）與恢復機制規範.txt',
-        'rule/特殊晉升事件表.txt'
-        'rule/遊戲主持人（GM）行為準則規範.txt'
-        'rule/擲骰檢定與判定機制規範.txt'
-        'rule/獵人公會結構與經營規範.txt'
+        'rule/特殊晉升事件表.txt',
+        'rule/遊戲主持人（GM）行為準則規範.txt',
+        'rule/擲骰檢定與判定機制規範.txt',
+        'rule/獵人公會結構與經營規範.txt',
         'rule/職業設定與二轉晉升規範.txt'
     ];
 
@@ -181,23 +256,27 @@ async function loadRulesFromFolder() {
             if (res.ok) {
                 const text = await res.text();
                 combinedRules += `\n\n=== [參考規範字典：${fileName}] ===\n` + text;
+            } else {
+                console.warn(`讀取檔案失敗 ${fileName}，HTTP 狀態: ${res.status}`);
             }
         } catch (e) {
             console.warn(`無法讀取檔案 ${fileName}，跳過該檔案。`, e);
         }
     }
 
-    // 附加絕對格式控制
     combinedRules += `
 \n=========================================
-【絕對格式與控制規範】
+【動態成長鎖定與 JSON 輸出規範】
 1. 開局第一回合，必須嚴格執行「第一步驟：引導玩家輸入角色姓名與性別」，禁止一次性跳過步驟。
 2. 初始 E 級獵人的 Max MP 固定為 10 點，Max HP 固定為 20 點，不可隨意修改。
-3. 你的每一次回應，必須 strict 僅輸出 JSON 格式，不得包含任何 Markdown 格式外殼或非 JSON 文字：
+3. 【動態成長鎖定規則】：玩家初始為普通覺醒者，無法獲得經驗值或提升等級（"unlocked_growth" 必須為 false）。只有當玩家在劇情中成功通關「雙重地下城 / 特殊晉升事件」後，方可將 "unlocked_growth" 改為 true，並開始解鎖等級與經驗值系統！
+4. 【擲骰規則】：遇到任何戰鬥攻擊、技能發動或風險檢定，你【嚴禁自己替玩家代骰】！必須在 JSON 的 "require_dice_check" 填入 true，暫停等待玩家擲骰結果！
+5. 你的每一次回應，必須 strict 僅輸出 JSON 格式，不得包含任何 Markdown 格式外殼或非 JSON 文字：
 {
   "player_status": {
     "name": "玩家姓名",
     "rank": "E級獵人",
+    "unlocked_growth": false,
     "level": 1,
     "hp": 20,
     "max_hp": 20,
@@ -208,6 +287,11 @@ async function loadRulesFromFolder() {
     "inventory": ["E級獵人執照", "破舊的匕首"]
   },
   "story_text": "生動劇情敘事內容...",
+  "require_dice_check": false, 
+  "dice_check_info": {
+     "check_type": "行動/技能檢定名稱 (如: 力量攻擊 / 敏捷閃避)",
+     "dc_desc": "難度描述與所需 DC (如: 門檻 DC 12)"
+  },
   "options": [
     "選項 1",
     "選項 2",
@@ -228,14 +312,13 @@ async function callGeminiAPI(userInputText) {
     document.getElementById('loading').style.display = 'block';
     disableButtons(true);
 
-    // 若尚未載入規則，先動態載入規則
     if (!fullSystemInstruction) {
         fullSystemInstruction = await loadRulesFromFolder();
     }
 
     chatHistory.push({ role: "user", parts: [{ text: userInputText }] });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     const requestBody = {
         system_instruction: {
@@ -308,9 +391,18 @@ function renderGame(data) {
     const mpPct = Math.max(0, Math.min(100, (status.mp / status.max_mp) * 100));
     document.getElementById('ui-mp-bar').style.width = `${mpPct}%`;
 
-    document.getElementById('ui-level-text').innerText = `Lv.${status.level} (${status.exp}/${status.max_exp})`;
-    const expPct = Math.max(0, Math.min(100, (status.exp / status.max_exp) * 100));
-    document.getElementById('ui-exp-bar').style.width = `${expPct}%`;
+    // 判斷是否已解鎖動態成長（經驗值系統）
+    if (status.unlocked_growth) {
+        document.getElementById('locked-status-item').style.display = 'none';
+        document.getElementById('exp-status-item').style.display = 'flex';
+        
+        document.getElementById('ui-level-text').innerText = `Lv.${status.level} (${status.exp}/${status.max_exp})`;
+        const expPct = Math.max(0, Math.min(100, (status.exp / status.max_exp) * 100));
+        document.getElementById('ui-exp-bar').style.width = `${expPct}%`;
+    } else {
+        document.getElementById('locked-status-item').style.display = 'flex';
+        document.getElementById('exp-status-item').style.display = 'none';
+    }
 
     document.getElementById('ui-inventory').innerText = status.inventory && status.inventory.length > 0 ? status.inventory.join(', ') : '空無一物';
 
@@ -321,18 +413,57 @@ function renderGame(data) {
     storyPanel.appendChild(newStoryBlock);
     storyPanel.scrollTop = storyPanel.scrollHeight;
 
-    const choicesPanel = document.getElementById('choices-panel');
-    choicesPanel.innerHTML = '';
+    if (data.require_dice_check && data.dice_check_info) {
+        currentCheckInfo = data.dice_check_info;
+        showDiceOverlay(currentCheckInfo);
+    } else {
+        const choicesPanel = document.getElementById('choices-panel');
+        choicesPanel.innerHTML = '';
 
-    if (data.options && data.options.length > 0) {
-        data.options.forEach((optText, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'btn';
-            btn.innerText = `${index + 1}. ${optText}`;
-            btn.onclick = () => makeChoice(optText);
-            choicesPanel.appendChild(btn);
-        });
+        if (data.options && data.options.length > 0) {
+            data.options.forEach((optText, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.innerText = `${index + 1}. ${optText}`;
+                btn.onclick = () => makeChoice(optText);
+                choicesPanel.appendChild(btn);
+            });
+        }
     }
+}
+
+function showDiceOverlay(checkInfo) {
+    document.getElementById('dice-title').innerText = `🎲 觸發檢定：${checkInfo.check_type || '行動檢定'}`;
+    document.getElementById('dice-desc').innerText = checkInfo.dc_desc || '請投擲 D20 決定行動成敗';
+    document.getElementById('dice-display').innerText = '🎲';
+    document.getElementById('dice-btn').disabled = false;
+    document.getElementById('dice-overlay').style.display = 'flex';
+}
+
+function rollDice() {
+    const diceBtn = document.getElementById('dice-btn');
+    diceBtn.disabled = true;
+    const display = document.getElementById('dice-display');
+
+    let counter = 0;
+    const interval = setInterval(() => {
+        display.innerText = Math.floor(Math.random() * 20) + 1;
+        counter++;
+        if (counter > 15) {
+            clearInterval(interval);
+            const finalRoll = Math.floor(Math.random() * 20) + 1;
+            display.innerText = finalRoll;
+
+            setTimeout(async () => {
+                document.getElementById('dice-overlay').style.display = 'none';
+                const resultText = `[玩家進行了 ${currentCheckInfo.check_type || '檢定'}]：原始 D20 骰出 ${finalRoll} 點！請根據規則與我的角色特性算式結算此行動結果。`;
+                const gameData = await callGeminiAPI(resultText);
+                if (gameData) {
+                    renderGame(gameData);
+                }
+            }, 1200);
+        }
+    }, 60);
 }
 
 function disableButtons(disabled) {
