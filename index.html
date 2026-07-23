@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRPG 遊戲：我獨自升級 (衍生版)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            background: #1e1e1e;
+            border-radius: 12px;
+            border: 1px solid #333;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        /* API Setting Modal */
+        #api-setup {
+            padding: 20px;
+            background: #2a2a2a;
+            border-bottom: 1px solid #444;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        #api-key-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: #121212;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 6px;
+        }
+        /* Top UI: Status Bar */
+        .status-bar {
+            background: #252526;
+            padding: 15px 20px;
+            border-bottom: 2px solid #333;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+        }
+        .status-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .status-label { font-size: 12px; color: #aaa; text-transform: uppercase; }
+        .status-value { font-size: 16px; font-weight: bold; color: #fff; }
+        
+        /* Progress Bars */
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: #444;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+        .progress-bar { height: 100%; width: 100%; transition: width 0.3s ease; }
+        .hp-bar { background: #e74c3c; }
+        .mp-bar { background: #3498db; }
+        .exp-bar { background: #f1c40f; }
+
+        /* Story Text Area */
+        .story-panel {
+            padding: 20px;
+            height: 350px;
+            overflow-y: auto;
+            line-height: 1.6;
+            font-size: 16px;
+            background: #181818;
+            border-bottom: 1px solid #333;
+        }
+        .story-text { margin-bottom: 15px; white-space: pre-wrap; }
+
+        /* Inventory Panel */
+        .inventory-panel {
+            padding: 10px 20px;
+            background: #202020;
+            border-bottom: 1px solid #333;
+            font-size: 14px;
+            color: #bbb;
+        }
+
+        /* Choice Buttons Area */
+        .choices-panel {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #1e1e1e;
+        }
+        .btn {
+            padding: 12px 18px;
+            background: #2d3748;
+            color: #edf2f7;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .btn:hover:not(:disabled) {
+            background: #4a5568;
+            border-color: #63b3ed;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Loading Overlay */
+        .loading { display: none; color: #f1c40f; text-align: center; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <!-- API Key Input Section -->
+    <div id="api-setup">
+        <label for="api-key-input">Gemini API Key:</label>
+        <input type="password" id="api-key-input" placeholder="請貼上你的 Gemini API Key">
+        <button class="btn" onclick="startGame()">開始/重置遊戲</button>
+    </div>
+
+    <!-- UI Status Bar -->
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-label">姓名/階級</span>
+            <span class="status-value" id="ui-name">未創角 (E級)</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">HP (生命值)</span>
+            <span class="status-value" id="ui-hp-text">10 / 10</span>
+            <div class="progress-container"><div id="ui-hp-bar" class="progress-bar hp-bar"></div></div>
+        </div>
+        <div class="status-item">
+            <span class="status-label">MP (魔力值)</span>
+            <span class="status-value" id="ui-mp-text">10 / 10</span>
+            <div class="progress-container"><div id="ui-mp-bar" class="progress-bar mp-bar"></div></div>
+        </div>
+        <div class="status-item">
+            <span class="status-label">等級 / 經驗值</span>
+            <span class="status-value" id="ui-level-text">Lv.1 (0/100)</span>
+            <div class="progress-container"><div id="ui-exp-bar" class="progress-bar exp-bar"></div></div>
+        </div>
+    </div>
+
+    <!-- Inventory Display -->
+    <div class="inventory-panel">
+        🎒 <strong>背包物品：</strong> <span id="ui-inventory">無</span>
+    </div>
+
+    <!-- Main Story Display Area -->
+    <div class="story-panel" id="story-panel">
+        <div class="story-text">歡迎來到《我獨自升級》衍生版 TRPG。請在上方的輸入框貼上你的 Gemini API Key，然後點擊「開始遊戲」。</div>
+    </div>
+
+    <div class="loading" id="loading">AI 主持人思考中，請稍後...</div>
+
+    <!-- Choice Action Buttons -->
+    <div class="choices-panel" id="choices-panel">
+        <!-- 這裡會由 JS 動態生成選項按鈕 -->
+    </div>
+</div>
+
+<script>
+// 遊戲系統 Prompt 設定 (將你的 TRPG 規則與 JSON 輸出規範整合)
+const SYSTEM_INSTRUCTION = `
+你是一位經驗豐富、敘事生動且邏輯嚴謹的文字 TRPG Game Master (GM)。
+你主持的遊戲參考《我獨自升級》世界觀衍生。
+
+【絕對規則】：
+1. 你必須 strict 遵守 JSON 格式輸出，嚴禁輸出任何非 JSON 的 markdown 外殼之外的純文字。
+2. 你每次回應時，必須同時包含最新的玩家 status（HP/MP/經驗/背包等）、劇情故事敘事、以及 3~4 個可選動作選項。
+3. 戰鬥與事件中，請精確扣除 HP 與 MP，並紀錄在 JSON 之中。
+
+【JSON 輸出格式規範】：
+{
+  "player_status": {
+    "name": "玩家姓名",
+    "rank": "E級獵人",
+    "level": 1,
+    "hp": 10,
+    "max_hp": 10,
+    "mp": 10,
+    "max_mp": 10,
+    "exp": 0,
+    "max_exp": 100,
+    "inventory": ["基礎匕首", "E級魔晶石x1"]
+  },
+  "story_text": "在這裡填寫生動的劇情描述與環境描繪 (200~300字)...",
+  "options": [
+    "選項 1 描述",
+    "選項 2 描述",
+    "選項 3 描述"
+  ]
+}
+`;
+
+let chatHistory = [];
+
+// API 呼叫函式
+async function callGeminiAPI(userInputText) {
+    const apiKey = document.getElementById('api-key-input').value.trim();
+    if (!apiKey) {
+        alert("請先輸入有效的 Gemini API Key！");
+        return null;
+    }
+
+    document.getElementById('loading').style.display = 'block';
+    disableButtons(true);
+
+    // 構建歷史紀錄
+    chatHistory.push({ role: "user", parts: [{ text: userInputText }] });
+
+    // 使用官方標準 v1beta 介面與最新的 gemini-2.5-flash 或 gemini-1.5-flash
+    const url =`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    
+    const requestBody = {
+        system_instruction: {
+            parts: [{ text: SYSTEM_INSTRUCTION }]
+        },
+        contents: chatHistory,
+        generationConfig: {
+            responseMimeType: "application/json" // 注意：屬性名稱應為 camelCase (responseMimeType)
+        }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("API 錯誤細節：", errorData);
+            alert(`API 呼叫失敗！\n錯誤代碼：${response.status}\n原因：${errorData.error?.message || '未知錯誤'}`);
+            return null;
+        }
+
+        const data = await response.json();
+        const aiResponseText = data.candidates[0].content.parts[0].text;
+        
+        // 將 AI 回應存回對話歷史
+        chatHistory.push({ role: "model", parts: [{ text: aiResponseText }] });
+
+        return JSON.parse(aiResponseText);
+    } catch (error) {
+        console.error("程式執行錯誤：", error);
+        alert(`發生網路或程式錯誤：${error.message}`);
+        return null;
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+        disableButtons(false);
+    }
+}
+
+// 開始遊戲 / 初始化
+async function startGame() {
+    chatHistory = []; // 清空歷史
+    document.getElementById('story-panel').innerHTML = '';
+    
+    // 開局 Prompt
+    const initPrompt = "遊戲開始。請執行開場初始化：介紹世界觀背景（位於台北的 Gate 異變），引導我建立角色，並給我第一回合的行動抉擇。";
+    const gameData = await callGeminiAPI(initPrompt);
+
+    if (gameData) {
+        renderGame(gameData);
+    }
+}
+
+// 選擇選項並推進劇情
+async function makeChoice(optionText) {
+    const gameData = await callGeminiAPI(`我選擇了：${optionText}`);
+    if (gameData) {
+        renderGame(gameData);
+    }
+}
+
+// 渲染畫面 UI 與劇情
+function renderGame(data) {
+    // 1. 更新 UI 狀態欄 (Status Bar)
+    const status = data.player_status;
+    document.getElementById('ui-name').innerText = `${status.name || '未命名'} (${status.rank || 'E級'})`;
+    
+    // HP
+    document.getElementById('ui-hp-text').innerText = `${status.hp} / ${status.max_hp}`;
+    const hpPct = Math.max(0, Math.min(100, (status.hp / status.max_hp) * 100));
+    document.getElementById('ui-hp-bar').style.width = `${hpPct}%`;
+
+    // MP
+    document.getElementById('ui-mp-text').innerText = `${status.mp} / ${status.max_mp}`;
+    const mpPct = Math.max(0, Math.min(100, (status.mp / status.max_mp) * 100));
+    document.getElementById('ui-mp-bar').style.width = `${mpPct}%`;
+
+    // Level & Exp
+    document.getElementById('ui-level-text').innerText = `Lv.${status.level} (${status.exp}/${status.max_exp})`;
+    const expPct = Math.max(0, Math.min(100, (status.exp / status.max_exp) * 100));
+    document.getElementById('ui-exp-bar').style.width = `${expPct}%`;
+
+    // 背包
+    document.getElementById('ui-inventory').innerText = status.inventory && status.inventory.length > 0 ? status.inventory.join(', ') : '空無一物';
+
+    // 2. 更新劇情文字 (Story Panel)
+    const storyPanel = document.getElementById('story-panel');
+    const newStoryBlock = document.createElement('div');
+    newStoryBlock.className = 'story-text';
+    newStoryBlock.innerText = `\n------------------------------\n${data.story_text}`;
+    storyPanel.appendChild(newStoryBlock);
+    storyPanel.scrollTop = storyPanel.scrollHeight; // 自動捲動到底部
+
+    // 3. 動態渲染按鈕 (Choice Buttons)
+    const choicesPanel = document.getElementById('choices-panel');
+    choicesPanel.innerHTML = ''; // 清空舊按鈕
+
+    if (data.options && data.options.length > 0) {
+        data.options.forEach((optText, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.innerText = `${index + 1}. ${optText}`;
+            btn.onclick = () => makeChoice(optText);
+            choicesPanel.appendChild(btn);
+        });
+    }
+}
+
+// 開關按鈕狀態（防止重複點擊）
+function disableButtons(disabled) {
+    const buttons = document.querySelectorAll('#choices-panel .btn');
+    buttons.forEach(btn => btn.disabled = disabled);
+}
+</script>
+
+</body>
+</html>
