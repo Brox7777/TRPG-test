@@ -132,10 +132,19 @@
         .send-btn:hover:not(:disabled) { background: #2b6cb0; }
         .save-btn { background: #2f855a; border-color: #38a169; text-align: center; }
         .save-btn:hover:not(:disabled) { background: #276749; }
+        .manual-save-option-btn {
+            background: #276749 !important;
+            border-color: #38a169 !important;
+            color: #e6fffa !important;
+            font-weight: bold;
+        }
+        .manual-save-option-btn:hover:not(:disabled) {
+            background: #2f855a !important;
+        }
         .loading { display: none; color: #f1c40f; text-align: center; margin: 10px 0; font-size: 14px; }
 
-        /* 🎲 Dice Roll Modal Overlay */
-        .dice-overlay {
+        /* 🎲 Dice Roll & Save Manager Modal Overlay */
+        .dice-overlay, .modal-overlay {
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -147,6 +156,30 @@
             padding: 20px;
             text-align: center;
         }
+        .modal-box {
+            background: #2a2a2a;
+            border: 2px solid #3182ce;
+            border-radius: 12px;
+            padding: 20px;
+            width: 95%;
+            max-width: 450px;
+            box-shadow: 0 0 20px rgba(49, 130, 206, 0.3);
+        }
+        .modal-title { font-size: 18px; color: #63b3ed; margin-bottom: 15px; font-weight: bold; }
+        .slot-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .slot-card {
+            background: #181818;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+        }
+        .slot-info { font-size: 12px; color: #ccc; }
+        .slot-name { font-size: 14px; font-weight: bold; color: #fff; }
+        .slot-btns { display: flex; gap: 5px; }
         .dice-box {
             background: #2a2a2a;
             border: 2px solid #f1c40f;
@@ -193,7 +226,7 @@
         <label for="api-key-input" style="font-size: 12px;">API Key:</label>
         <input type="password" id="api-key-input" placeholder="貼上 Gemini API Key">
         <button class="btn" onclick="startGame()">新遊戲</button>
-        <button class="btn save-btn" onclick="loadGame()">💾 讀取進度</button>
+        <button class="btn save-btn" onclick="openSaveManager()">📂 存檔管理</button>
     </div>
 
     <div class="status-bar">
@@ -229,7 +262,7 @@
     </div>
 
     <div class="story-panel" id="story-panel">
-        <div class="story-text">歡迎來到《我獨自升級》衍生版 TRPG。請在上方的輸入框貼上你的 Gemini API Key，然後點擊「新遊戲」開始創角，或點擊「💾 讀取進度」接續上次遊戲。</div>
+        <div class="story-text">歡迎來到《我獨自升級》衍生版 TRPG。請在上方的輸入框貼上你的 Gemini API Key，然後點擊「新遊戲」開始創角，或點擊「📂 存檔管理」讀取/儲存角色進度。</div>
     </div>
 
     <div class="loading" id="loading">AI 主持人正在閱讀規則與思考中，請稍後...</div>
@@ -240,6 +273,15 @@
             <button class="btn send-btn" id="send-input-btn" onclick="sendCustomInput()">送出</button>
         </div>
         <div id="button-options-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+    </div>
+
+    <!-- 📂 多角色存檔管理 Modal -->
+    <div class="modal-overlay" id="save-modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">📂 多角色存檔管理</div>
+            <div class="slot-list" id="slot-list"></div>
+            <button class="btn send-btn" style="width: 100%;" onclick="closeSaveManager()">關閉面板</button>
+        </div>
     </div>
 
     <!-- 🎲 Dice Roll Modal Overlay -->
@@ -258,6 +300,7 @@ let chatHistory = [];
 let fullSystemInstruction = "";
 let currentCheckInfo = null;
 let lastGameData = null;
+let currentSlot = 1; // 預設使用欄位 1
 
 window.onload = function() {
     const savedApiKey = localStorage.getItem('trpg_gemini_api_key');
@@ -406,7 +449,8 @@ async function callGeminiAPI(userInputText) {
         const parsedData = JSON.parse(aiResponseText);
         lastGameData = parsedData;
 
-        saveGameData();
+        // 背景自動儲存至目前欄位[cite: 4]
+        saveGameToSlot(currentSlot, false);
 
         return parsedData;
     } catch (error) {
@@ -419,21 +463,29 @@ async function callGeminiAPI(userInputText) {
     }
 }
 
-function saveGameData() {
+// 📂 多角色存檔管理邏輯[cite: 4]
+function saveGameToSlot(slotId, showAlert = true) {
     if (chatHistory.length > 0 && lastGameData) {
+        const charName = lastGameData.player_status?.name || '未命名獵人';
         const saveData = {
             chatHistory: chatHistory,
             lastGameData: lastGameData,
-            savedTime: new Date().toLocaleString()
+            savedTime: new Date().toLocaleString(),
+            charName: charName
         };
-        localStorage.setItem('trpg_save_slot', JSON.stringify(saveData));
+        localStorage.setItem(`trpg_save_slot_${slotId}`, JSON.stringify(saveData));
+        if (showAlert) {
+            alert(`成功儲存至【存檔欄位 ${slotId}】！(角色：${charName})`);
+        }
+    } else if (showAlert) {
+        alert("目前沒有可儲存的遊戲進度！");
     }
 }
 
-function loadGame() {
-    const rawSave = localStorage.getItem('trpg_save_slot');
+function loadGameFromSlot(slotId) {
+    const rawSave = localStorage.getItem(`trpg_save_slot_${slotId}`);
     if (!rawSave) {
-        alert("找不到已儲存的遊戲進度！");
+        alert(`【欄位 ${slotId}】目前沒有存檔！`);
         return;
     }
 
@@ -441,6 +493,7 @@ function loadGame() {
         const saveData = JSON.parse(rawSave);
         chatHistory = saveData.chatHistory;
         lastGameData = saveData.lastGameData;
+        currentSlot = slotId;
 
         document.getElementById('story-panel').innerHTML = '';
         
@@ -454,15 +507,66 @@ function loadGame() {
         });
 
         renderGame(lastGameData);
-        alert(`成功讀取進度！(存檔時間：${saveData.savedTime || '歷史紀錄'})`);
+        closeSaveManager();
+        alert(`成功載入【欄位 ${slotId}】！角色：${saveData.charName || '未知'}`);
     } catch (e) {
         alert("讀取存檔失敗，檔案格式可能損壞。");
     }
 }
 
+function deleteSlot(slotId) {
+    if (confirm(`確定要刪除【存檔欄位 ${slotId}】的進度嗎？`)) {
+        localStorage.removeItem(`trpg_save_slot_${slotId}`);
+        openSaveManager(); // 刷新選單
+    }
+}
+
+function openSaveManager() {
+    const slotListEl = document.getElementById('slot-list');
+    slotListEl.innerHTML = '';
+
+    for (let i = 1; i <= 3; i++) {
+        const rawSave = localStorage.getItem(`trpg_save_slot_${i}`);
+        const slotCard = document.createElement('div');
+        slotCard.className = 'slot-card';
+
+        if (rawSave) {
+            const data = JSON.parse(rawSave);
+            slotCard.innerHTML = `
+                <div>
+                    <div class="slot-name">Slot ${i}: ${data.charName || '未知角色'} ${currentSlot === i ? '⭐(目前進度)' : ''}</div>
+                    <div class="slot-info">時間: ${data.savedTime || '未知'}</div>
+                </div>
+                <div class="slot-btns">
+                    <button class="btn save-btn" onclick="saveGameToSlot(${i}, true)">覆蓋</button>
+                    <button class="btn send-btn" onclick="loadGameFromSlot(${i})">讀取</button>
+                    <button class="btn" style="background:#c0392b; border-color:#e74c3c;" onclick="deleteSlot(${i})">刪除</button>
+                </div>
+            `;
+        } else {
+            slotCard.innerHTML = `
+                <div>
+                    <div class="slot-name">Slot ${i}: 空白存檔欄位</div>
+                    <div class="slot-info">尚未儲存任何角色進度</div>
+                </div>
+                <div class="slot-btns">
+                    <button class="btn save-btn" onclick="saveGameToSlot(${i}, true)">儲存至此</button>
+                </div>
+            `;
+        }
+        slotListEl.appendChild(slotCard);
+    }
+
+    document.getElementById('save-modal-overlay').style.display = 'flex';
+}
+
+function closeSaveManager() {
+    document.getElementById('save-modal-overlay').style.display = 'none';
+}
+
 async function startGame() {
     if (chatHistory.length > 0) {
-        if (!confirm("確定要開始新遊戲嗎？未儲存的舊進度將會被覆蓋！")) {
+        if (!confirm("確定要開始新遊戲/建立新角色嗎？未手動儲存的舊進度可能會遺失！")) {
             return;
         }
     }
@@ -557,6 +661,13 @@ function renderGame(data) {
                 choicesPanel.appendChild(btn);
             });
         }
+
+        // 🌟 固定第 4 個按鈕：手動儲存進度按鈕[cite: 4]
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn manual-save-option-btn';
+        saveBtn.innerText = `4. 💾 儲存目前進度 (Slot ${currentSlot})`;
+        saveBtn.onclick = () => saveGameToSlot(currentSlot, true);
+        choicesPanel.appendChild(saveBtn);
     }
 }
 
