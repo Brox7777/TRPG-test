@@ -156,21 +156,21 @@
 let chatHistory = [];
 let fullSystemInstruction = "";
 
-// 自動讀取 rules 資料夾內所有文字檔的函式
+// 自動讀取 rule 資料夾內所有文字檔的函式
 async function loadRulesFromFolder() {
     // 這裡填入你在 rules 資料夾放的檔名清單
     const fileList = [
-        'rules/TRPG-我獨自升級(衍生版)總體規則.txt',
-        'rules/世界觀設定與衍生規範.txt',
-        'rules/角色生命值（HP）與恢復機制規範.txt',
-        'rules/角色特性規範.txt',
-        'rules/角色與魔物階級強度暨逐級（Lv.1-120）詳細規範手冊',
-        'rules/角色魔力值（MP）與恢復機制規範.txt',
-        'rules/特殊晉升事件表.txt'
-        'rules/遊戲主持人（GM）行為準則規範.txt'
-        'rules/擲骰檢定與判定機制規範.txt'
-        'rules/獵人公會結構與經營規範.txt'
-        'rules/職業設定與二轉晉升規範.txt'
+        'rule/TRPG-我獨自升級(衍生版)總體規則.txt',
+        'rule/世界觀設定與衍生規範.txt',
+        'rule/角色生命值（HP）與恢復機制規範.txt',
+        'rule/角色特性規範.txt',
+        'rule/角色與魔物階級強度暨逐級（Lv.1-120）詳細規範手冊',
+        'rule/角色魔力值（MP）與恢復機制規範.txt',
+        'rule/特殊晉升事件表.txt'
+        'rule/遊戲主持人（GM）行為準則規範.txt'
+        'rule/擲骰檢定與判定機制規範.txt'
+        'rule/獵人公會結構與經營規範.txt'
+        'rule/職業設定與二轉晉升規範.txt'
     ];
 
     let combinedRules = "你是一位經驗豐富、敘事生動且邏輯嚴謹的文字 TRPG Game Master (GM)。你主持的遊戲必須嚴格恪守以下全部字典與規範文件內容：\n\n";
