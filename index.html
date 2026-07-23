@@ -253,17 +253,9 @@
 let chatHistory = [];
 let fullSystemInstruction = "";
 let lastGameData = null;
-let currentSlot = 1; // 預設使用欄位 1
+let currentSlot = 1;
 let currentGameEvolutionEvent = ""; // 儲存本局 JS 隨機抽到的特殊晉升事件
 
-window.onload = function() {
-    const savedApiKey = localStorage.getItem('trpg_gemini_api_key');
-    if (savedApiKey) {
-        document.getElementById('api-key-input').value = savedApiKey;
-    }
-};
-
-// 🎲 由前端 JavaScript 完全掌控 1D15 隨機抽樣，確保每次新遊戲事件都不重複
 function getRandomEvolutionEvent() {
     const events = [
         "01. 【古代魔導核心遺跡 (Ancient Aether Nexus)】",
