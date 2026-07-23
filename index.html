@@ -270,14 +270,14 @@ function getRandomEvolutionEvent() {
         "02. 【虛空裂縫重疊事件 (Void Rift Convergence)】",
         "03. 【神聖律令之契約 (Covenant of the Divine Mandate)】",
         "04. 【君王殘魂之寄生 (Host of the Fallen Monarch)】",
-        "05. 【界外天體之詛咒與賜福 (Cosmic Starlight Parasite)】", // 🌟 已修正錯字
+        "05. 【界外天體之詛咒與賜福 (Cosmic Starlight Parasite)】", // 🌟 已修正「詛詛」錯字
         "06. 【時空迴廊之囚徒 (Prisoner of the Temporal Loop)】",
         "07. 【失落神明之棋盤 (The Divine Chessboard)】",
         "08. 【概念吞噬者的器官移植 (Devourer's Graft)】",
         "09. 【萬界數據庫之權限溢出 (Database Overflow Error)】",
         "10. 【死靈深淵之回響 (Echoes from the Necrotic Abyss)】",
         "11. 【原始自然意志之同化 (Mother Nexus Symbiosis)】",
-        "12. 【法则之天秤試煉 (Trial of the Cosmic Scales)】",
+        "12. 【法則之天秤試煉 (Trial of the Cosmic Scales)】",
         "13. 【異界軍團之最後遺產 (Legacy of the Lost Vanguard)】",
         "14. 【混沌魔核之血脈燃燒 (Primordial Chaos Ignition)】",
         "15. 【噩夢主宰之夢境侵蝕 (Nightmare Sovereign's Intrusion)】"
@@ -481,6 +481,7 @@ function loadGameFromSlot(slotId) {
         lastGameData = saveData.lastGameData;
         currentSlot = slotId;
         currentGameEvolutionEvent = saveData.currentGameEvolutionEvent || getRandomEvolutionEvent();
+        fullSystemInstruction = ""; // 🌟 讀取存檔時重置 Prompt 快取
 
         document.getElementById('story-panel').innerHTML = '';
         
@@ -563,7 +564,7 @@ async function startGame() {
     // 🌟 新遊戲開局：前端先抽取本局事件，並強制重新建構全套規則 Prompt
     currentGameEvolutionEvent = getRandomEvolutionEvent();
     console.log("本局遊戲預定晉升事件：", currentGameEvolutionEvent);
-    fullSystemInstruction = await loadRulesFromFolder(); // 🌟 強制重載 Prompt，確保最新事件被帶入
+    fullSystemInstruction = await loadRulesFromFolder(); // 🌟 強制重載 Prompt，確保最新事件被注入
 
     const initPrompt = `遊戲開始。請嚴格執行開場初始化【第一步驟】：引導我建立角色（輸入角色姓名與性別）。在此步驟嚴禁列出職業或特性！`;
     const gameData = await callGeminiAPI(initPrompt);
