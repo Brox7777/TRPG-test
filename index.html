@@ -259,7 +259,6 @@ let fullSystemInstruction = "";
 let currentCheckInfo = null;
 let lastGameData = null;
 
-// 當網頁開啟時，自動將上次儲存的 API Key 帶入輸入框
 window.onload = function() {
     const savedApiKey = localStorage.getItem('trpg_gemini_api_key');
     if (savedApiKey) {
@@ -363,7 +362,6 @@ async function callGeminiAPI(userInputText) {
         return null;
     }
 
-    // 自動記憶 API Key 到本地
     localStorage.setItem('trpg_gemini_api_key', apiKey);
 
     document.getElementById('loading').style.display = 'block';
@@ -375,7 +373,8 @@ async function callGeminiAPI(userInputText) {
 
     chatHistory.push({ role: "user", parts: [{ text: userInputText }] });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    // 切換為 Gemini 2.5 Flash Lite，擁有 10 RPM，大幅降低 429 頻率限制機率
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
     
     const requestBody = {
         system_instruction: {
@@ -408,7 +407,6 @@ async function callGeminiAPI(userInputText) {
         const parsedData = JSON.parse(aiResponseText);
         lastGameData = parsedData;
 
-        // 💾 每次對話成功後自動存檔至 localStorage
         saveGameData();
 
         return parsedData;
@@ -422,7 +420,6 @@ async function callGeminiAPI(userInputText) {
     }
 }
 
-// 💾 自動儲存存檔資料[cite: 11]
 function saveGameData() {
     if (chatHistory.length > 0 && lastGameData) {
         const saveData = {
@@ -434,7 +431,6 @@ function saveGameData() {
     }
 }
 
-// 💾 讀取進度[cite: 11]
 function loadGame() {
     const rawSave = localStorage.getItem('trpg_save_slot');
     if (!rawSave) {
@@ -449,7 +445,6 @@ function loadGame() {
 
         document.getElementById('story-panel').innerHTML = '';
         
-        // 渲染歷史文字
         chatHistory.forEach(item => {
             if (item.role === 'model') {
                 try {
